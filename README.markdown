@@ -27,7 +27,7 @@ The script will output 2 files. One PPM file, and one FITS file. The PPM file is
 
 Future Usage:
 
-TODO add ability to run cr2fits.py as a python module.
+TODO add ability to run cr2fits.py as a python module.::
 
->>> import cr2fits
->>> img_data = cr2fits.cr2_fits('./filename.cr2', color_index)
+    >>> import cr2fits
+    >>> img_data = cr2fits.cr2_fits('./filename.cr2', color_index)
