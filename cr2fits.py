@@ -22,8 +22,8 @@ version = "1.0.3"
 
 try :    
     from copy import deepcopy
-    import numpy, pyfits, subprocess, sys, re, datetime, math
-    
+    import numpy, pyfits, subprocess, sys, os, re, datetime, math
+
 except :
     print("ERROR : Missing some libraries!")
     print("Check if you have the following :\n\tnumpy\n\tpyfits\n\tdcraw")
@@ -256,7 +256,7 @@ if sys.version_info[0] > 2:
 
 ### CR2FITS SOURCE CODE ###
 
-def cr2_fits(cr2FileName, colorInput):
+def cr2_fits(cr2FileName, colorInput, save_fits=True, force_ppm=True):
     colors = {0:"Red",1:"Green",2:"Blue",3:"Raw"}
     colorState = any([True for i in colors.keys() if i == colorInput])
 
@@ -264,51 +264,56 @@ def cr2_fits(cr2FileName, colorInput):
         print("ERROR : Color value can be set as 0:Red, 1:Green, 2:Blue, 3:Raw.")
         raise SystemExit    
 
-    print("Reading file %s...") % cr2FileName
-    try :
-        #Converting the CR2 to PPM
-        if colorInput == 3:
-            p = subprocess.Popen(["dcraw","-D","-4",cr2FileName]).communicate()[0]
-        else:
-            p = subprocess.Popen(["dcraw","-6",cr2FileName]).communicate()[0]
+    if (os.path.isfile(cr2FileName.split('.')[0] + '.pgm') or os.path.isfile(cr2FileName.split('.')[0] + '.ppm')) and not force_ppm:
+        #assume if a ppm/pgm file exists it is uptodate
+        pass
+    else:
+        print("Reading file %s...") % cr2FileName
+        try:
+            #Converting the CR2 to PPM
+            if colorInput == 3:
+                p = subprocess.Popen(["dcraw","-D","-4",cr2FileName]).communicate()[0]
+            else:
+                p = subprocess.Popen(["dcraw","-6",cr2FileName]).communicate()[0]
 
-        #Getting the EXIF of CR2 with dcraw
-        p = subprocess.Popen(["dcraw","-i","-v",cr2FileName],stdout=subprocess.PIPE)
-        cr2header = p.communicate()[0]
+            #Getting the EXIF of CR2 with dcraw
+            p = subprocess.Popen(["dcraw","-i","-v",cr2FileName],stdout=subprocess.PIPE)
+            cr2header = p.communicate()[0]
 
-        #Catching the Timestamp
-        m = re.search('(?<=Timestamp:).*',cr2header)
-        date1=m.group(0).split()
-        months = { 'Jan' : 1, 'Feb' : 2, 'Mar' : 3, 'Apr' : 4, 'May' : 5, 'Jun' : 6, 'Jul' : 7, 'Aug' : 8, 'Sep' : 9, 'Oct' : 10, 'Nov' : 11, 'Dec' : 12 }
-        date = datetime.datetime(int(date1[4]),months[date1[1]],int(date1[2]),int(date1[3].split(':')[0]),int(date1[3].split(':')[1]),int(date1[3].split(':')[2]))
-        date ='{0:%Y-%m-%d %H:%M:%S}'.format(date)
+            #Catching the Timestamp
+            m = re.search('(?<=Timestamp:).*',cr2header)
+            date1=m.group(0).split()
+            months = { 'Jan' : 1, 'Feb' : 2, 'Mar' : 3, 'Apr' : 4, 'May' : 5, 'Jun' : 6, 'Jul' : 7, 'Aug' : 8, 'Sep' : 9, 'Oct' : 10, 'Nov' : 11, 'Dec' : 12 }
+            date = datetime.datetime(int(date1[4]),months[date1[1]],int(date1[2]),int(date1[3].split(':')[0]),int(date1[3].split(':')[1]),int(date1[3].split(':')[2]))
+            date ='{0:%Y-%m-%d %H:%M:%S}'.format(date)
 
-        #Catching the Shutter Speed
-        m = re.search('(?<=Shutter:).*(?=sec)',cr2header)
-        shutter = m.group(0).strip()
-        #Catching the Aperture
-        m = re.search('(?<=Aperture: f/).*',cr2header)
-        aperture = m.group(0).strip()
+            #Catching the Shutter Speed
+            m = re.search('(?<=Shutter:).*(?=sec)',cr2header)
+            shutter = m.group(0).strip()
+            #Catching the Aperture
+            m = re.search('(?<=Aperture: f/).*',cr2header)
+            aperture = m.group(0).strip()
 
-        #Catching the ISO Speed
-        m = re.search('(?<=ISO speed:).*',cr2header)
-        iso = m.group(0).strip()
+            #Catching the ISO Speed
+            m = re.search('(?<=ISO speed:).*',cr2header)
+            iso = m.group(0).strip()
 
-        #Catching the Focal length
-        m = re.search('(?<=Focal length: ).*(?=mm)',cr2header)
-        focal = m.group(0).strip()
+            #Catching the Focal length
+            m = re.search('(?<=Focal length: ).*(?=mm)',cr2header)
+            focal = m.group(0).strip()
 
-        #Catching the Original Filename of the cr2
-        m = re.search('(?<=Filename:).*',cr2header)
-        original_file = m.group(0).strip()
+            #Catching the Original Filename of the cr2
+            m = re.search('(?<=Filename:).*',cr2header)
+            original_file = m.group(0).strip()
 
-        #Catching the Camera Type
-        m = re.search('(?<=Camera:).*',cr2header)
-        camera = m.group(0).strip()
+            #Catching the Camera Type
+            m = re.search('(?<=Camera:).*',cr2header)
+            camera = m.group(0).strip()
 
-    except :
-        print("ERROR : Something went wrong with dcraw. Do you even have dcraw?")
-        raise SystemExit
+        #except TypeError:
+        except OSError as error:
+            print("ERROR : Something went wrong with dcraw. Do you even have dcraw?")
+            raise SystemExit
 
     print("Reading the PPM output...")
     try :
@@ -343,31 +348,38 @@ def cr2_fits(cr2FileName, colorInput):
         else:
             hdu = pyfits.PrimaryHDU(im_green)
             tag = colors[colorInput][0]
-        hdu.header.update('OBSTIME',date)
-        hdu.header.update('EXPTIME',shutter)
-        hdu.header.update('APERTUR',aperture)
-        hdu.header.update('ISO',iso)
-        hdu.header.update('FOCAL',focal)
-        hdu.header.update('ORIGIN',original_file)
-        hdu.header.update('FILTER',colors[colorInput])
-        hdu.header.update('CAMERA',camera)
+        try:
+            hdu.header.update('OBSTIME',date)
+            hdu.header.update('EXPTIME',shutter)
+            hdu.header.update('APERTUR',aperture)
+            hdu.header.update('ISO',iso)
+            hdu.header.update('FOCAL',focal)
+            hdu.header.update('ORIGIN',original_file)
+            hdu.header.update('FILTER',colors[colorInput])
+            hdu.header.update('CAMERA',camera)
+        except UnboundLocalError:
+            print "Warning: no meta data loaded."
         hdu.header.add_comment('FITS File Created with cr2fits.py available at %s'%(sourceweb))
         hdu.header.add_comment('cr2fits.py version %s'%(version))
         hdu.header.add_comment('EXPTIME is in seconds.')
         hdu.header.add_comment('APERTUR is the ratio as in f/APERTUR')
         hdu.header.add_comment('FOCAL is in mm')    
-    except : 
+    except TypeError:
         print("ERROR : Something went wrong while creating the FITS file.")
         raise SystemExit
+    
+    
+    if save_fits:
+        print("Writing the FITS file...")
+        try :
+            hdu.writeto(cr2FileName.split('.')[0]+"-"+tag+'.fits')
+        except:
+            print("ERROR : Something went wrong while writing the FITS file. Maybe it already exists?")
+            raise SystemExit
 
-    print("Writing the FITS file...")
-    try :
-        hdu.writeto(cr2FileName.split('.')[0]+"-"+tag+'.fits')
-    except :
-        print("ERROR : Something went wrong while writing the FITS file. Maybe it already exists?")
-        raise SystemExit
-
-    print("Conversion successful!")
+            print("Conversion successful!")
+    else:
+        return hdu
 
 if __name__ == '__main__':
     #command line interface
