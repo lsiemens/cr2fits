@@ -256,7 +256,33 @@ if sys.version_info[0] > 2:
 
 ### CR2FITS SOURCE CODE ###
 
-def cr2_fits(cr2FileName, colorInput, save_fits=True, force_ppm=True):
+def read_CR2(cr2FileName, colorInput, force_ppm=True):
+    """ 
+    Read CR2 raw image.
+    
+    Read a CR2 image and save the data in a pyfits HDU object.
+
+    Parameters
+    ----------
+    cr2FileName : string
+        The name of the CR2 file.
+    colorInput : integer
+        The color channel to extract from the image.
+        
+        Select 0 for the Red channel, 1 for the Green channel, 
+        2 for the Blue channel or 3 for Raw.
+    force_ppm : boolean, optional
+        Force an update of the ppm/pgm file.  If force_ppm is False
+        and a ppm/pgm version of the file cr2FileName already exists,
+        then the ppm/pgm is read directly with out updating.  The
+        default is True.
+    
+    Returns
+    -------
+    HDU
+        A pyfits HDU object containing the data from the file cr2FileName is returned.       
+
+    """
     colors = {0:"Red",1:"Green",2:"Blue",3:"Raw"}
     colorState = any([True for i in colors.keys() if i == colorInput])
 
@@ -344,10 +370,8 @@ def cr2_fits(cr2FileName, colorInput, save_fits=True, force_ppm=True):
     #Creating the FITS File
         if colorInput == 3:
             hdu = pyfits.PrimaryHDU(im_ppm)
-            tag = 'raw'
         else:
             hdu = pyfits.PrimaryHDU(im_green)
-            tag = colors[colorInput][0]
         try:
             hdu.header.update('OBSTIME',date)
             hdu.header.update('EXPTIME',shutter)
@@ -367,19 +391,7 @@ def cr2_fits(cr2FileName, colorInput, save_fits=True, force_ppm=True):
     except TypeError:
         print("ERROR : Something went wrong while creating the FITS file.")
         raise SystemExit
-    
-    
-    if save_fits:
-        print("Writing the FITS file...")
-        try :
-            hdu.writeto(cr2FileName.split('.')[0]+"-"+tag+'.fits')
-        except:
-            print("ERROR : Something went wrong while writing the FITS file. Maybe it already exists?")
-            raise SystemExit
-
-            print("Conversion successful!")
-    else:
-        return hdu
+    return hdu
 
 if __name__ == '__main__':
     #command line interface
@@ -397,4 +409,21 @@ if __name__ == '__main__':
         print("For details : http://github.com/eaydin/cr2fits")
         print("Version : %s" % version) 
         raise SystemExit
-    cr2_fits(cr2FileName, colorInput)
+
+    hdu = read_CR2(cr2FileName, colorInput)
+
+    print("Writing the FITS file...")
+    try :
+        if colorInput == 3:
+            tag = 'raw'
+        else:
+            colors = {0:"Red",1:"Green",2:"Blue",3:"Raw"}
+            tag = colors[colorInput][0]
+
+        hdu.writeto(cr2FileName.split('.')[0]+"-"+tag+'.fits')
+    except:
+        print("ERROR : Something went wrong while writing the FITS file. Maybe it already exists?")
+        raise SystemExit
+
+        print("Conversion successful!")
+
