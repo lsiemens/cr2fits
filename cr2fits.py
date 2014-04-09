@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#
+# modified cr2fits.py Copyright 2014 Luke Siemens
+# https://github.com/lsiemens/cr2fits
+#
+
 # 3rd attempt
 # 15th Feb 2012, 09:38AM
 # http://eayd.in
@@ -251,23 +256,7 @@ if sys.version_info[0] > 2:
 
 ### CR2FITS SOURCE CODE ###
 
-
-if __name__ == '__main__':
-    try :
-        cr2FileName = sys.argv[1]
-        colorInput = int(sys.argv[2]) # 0=R 1=G 2=B 3=raw
-    except :
-        print("ERROR : You probably don't know how to use it?")
-        print("./cr2fits.py <cr2filename> <color-index>")
-        print("The <color-index> can take 4 values:0,1,2 for R,G,B respectively, or 3 for completely raw.")
-        print("Example :\n\t$ ./cr2fits.py myimage.cr2 1")
-        print("The above example will create 2 outputs.")
-        print("\tmyimage.ppm : The PPM, which you can delete.")
-        print("\tmyimage-G.fits : The FITS image in the Green channel, which is the purpose!")
-        print("For details : http://github.com/eaydin/cr2fits")
-        print("Version : %s" % version) 
-        raise SystemExit
-
+def cr2_fits(cr2FileName, colorInput):
     colors = {0:"Red",1:"Green",2:"Blue",3:"Raw"}
     colorState = any([True for i in colors.keys() if i == colorInput])
 
@@ -379,3 +368,21 @@ if __name__ == '__main__':
         raise SystemExit
 
     print("Conversion successful!")
+
+if __name__ == '__main__':
+    #command line interface
+    try :
+        cr2FileName = sys.argv[1]
+        colorInput = int(sys.argv[2]) # 0=R 1=G 2=B 3=raw
+    except :
+        print("ERROR : You probably don't know how to use it?")
+        print("./cr2fits.py <cr2filename> <color-index>")
+        print("The <color-index> can take 4 values:0,1,2 for R,G,B respectively, or 3 for completely raw.")
+        print("Example :\n\t$ ./cr2fits.py myimage.cr2 1")
+        print("The above example will create 2 outputs.")
+        print("\tmyimage.ppm : The PPM, which you can delete.")
+        print("\tmyimage-G.fits : The FITS image in the Green channel, which is the purpose!")
+        print("For details : http://github.com/eaydin/cr2fits")
+        print("Version : %s" % version) 
+        raise SystemExit
+    cr2_fits(cr2FileName, colorInput)
