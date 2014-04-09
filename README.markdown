@@ -15,7 +15,14 @@ Dependencies :
 
 Usage : 
 
-`cr2fits.py <cr2-filename> <color-index>`
+To use as a command line tool.::
+
+    ./cr2fits.py <cr2-filename> <color-index>
+
+Or load as a python module.::
+
+    >>> import cr2fits
+    >>> img_data = cr2fits.read_CR2('./filename.cr2', color_index) #for more info enter cr2fits.read_CR2?
 
 - cr2-filename : This will obviously be the name of the file to convert.
 - color-index : Can take three values, either 0, 1, 2 which represent Red, Green, Blue respectively.
@@ -23,11 +30,3 @@ Usage :
 Outputs :
 
 The script will output 2 files. One PPM file, and one FITS file. The PPM file is useless if you don’t need it, but the script doesn’t delete it. I’ve left it on purpose, since the script you’re going to call cr2fits can easily handle the job. (ex: your shell script?) The FITS file is what we need, the color channel is also added to the name of the output file.
-
-
-Future Usage:
-
-TODO add ability to run cr2fits.py as a python module.::
-
-    >>> import cr2fits
-    >>> img_data = cr2fits.cr2_fits('./filename.cr2', color_index)
