@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #
@@ -257,6 +256,17 @@ if sys.version_info[0] > 2:
 
 ### CR2FITS SOURCE CODE ###
 
+class raw_metadata:
+    def __init__(self, date=None, shutter=None, aperture=None, iso=None,
+                 focal=None, original_file=None, camera=None):
+        self.date = date
+        self.shutter = shutter
+        self.aperture = aperture
+        self.iso = iso
+        self.focal = focal
+        self.original_file = original_file
+        self.camera = camera
+
 def read_cr2(cr2FileName, force_ppm=True):
     """ 
     Read CR2 raw image.
@@ -285,7 +295,8 @@ def read_cr2(cr2FileName, force_ppm=True):
             ppm_name = tmp_name[0] + '.ppm'
         else:
             ppm_name = cr2FileName + '.ppm'
-
+    
+    metadata = raw_metadata()
     if (not os.path.isfile(ppm_name)) or force_ppm:
         print("Reading file %s...") % cr2FileName
         try:
@@ -301,35 +312,36 @@ def read_cr2(cr2FileName, force_ppm=True):
             date1=m.group(0).split()
             months = { 'Jan' : 1, 'Feb' : 2, 'Mar' : 3, 'Apr' : 4, 'May' : 5, 'Jun' : 6, 'Jul' : 7, 'Aug' : 8, 'Sep' : 9, 'Oct' : 10, 'Nov' : 11, 'Dec' : 12 }
             date = datetime.datetime(int(date1[4]),months[date1[1]],int(date1[2]),int(date1[3].split(':')[0]),int(date1[3].split(':')[1]),int(date1[3].split(':')[2]))
-            date ='{0:%Y-%m-%d %H:%M:%S}'.format(date)
+            metadata.date ='{0:%Y-%m-%d %H:%M:%S}'.format(date)
 
             #Catching the Shutter Speed
             m = re.search('(?<=Shutter:).*(?=sec)',cr2header)
-            shutter = m.group(0).strip()
+            metadata.shutter = m.group(0).strip()
             #Catching the Aperture
             m = re.search('(?<=Aperture: f/).*',cr2header)
-            aperture = m.group(0).strip()
+            metadata.aperture = m.group(0).strip()
 
             #Catching the ISO Speed
             m = re.search('(?<=ISO speed:).*',cr2header)
-            iso = m.group(0).strip()
+            metadata.iso = m.group(0).strip()
 
             #Catching the Focal length
             m = re.search('(?<=Focal length: ).*(?=mm)',cr2header)
-            focal = m.group(0).strip()
+            metadata.focal = m.group(0).strip()
 
             #Catching the Original Filename of the cr2
             m = re.search('(?<=Filename:).*',cr2header)
-            original_file = m.group(0).strip()
+            metadata.original_file = m.group(0).strip()
 
             #Catching the Camera Type
             m = re.search('(?<=Camera:).*',cr2header)
-            camera = m.group(0).strip()
-
+            metadata.camera = m.group(0).strip()
         #except TypeError:
-        except OSError as error:
+        except OSError:
             print("ERROR : Something went wrong with dcraw. Do you even have dcraw?")
             raise SystemExit
+        except AttributeError:
+            print("AttributeError")
 
     print("Reading the PPM output...")
     try :
@@ -340,4 +352,4 @@ def read_cr2(cr2FileName, force_ppm=True):
         raise SystemExit
 
     #shutter/EXPTIME is in seconds: APERTUR is the ratio as in f/APERTUR: FOCAL is in mm
-    return im_ppm, (date, shutter, aperture, iso, focal, original_file, camera)
+    return im_ppm, metadata
