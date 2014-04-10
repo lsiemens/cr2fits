@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 #
-# modified cr2fits.py Copyright 2014 Luke Siemens
+# modified cr2image.py Copyright 2014 Luke Siemens
+# changed the name from cr2fits.py to cr2image.py
 # https://github.com/lsiemens/cr2fits
 #
 
@@ -17,8 +18,8 @@
 ### BUT, there's nothing to worry about usage, laws etc.
 ### Enjoy.
 
-sourceweb = "http://github.com/lsiemens/cr2fits"
-version = "1.0.3"
+sourceweb = "http://github.com/lsiemens/cr2image"
+version = "1.0.4"
 
 try :    
     from copy import deepcopy
@@ -256,12 +257,10 @@ if sys.version_info[0] > 2:
 
 ### CR2FITS SOURCE CODE ###
 
-def read_CR2(cr2FileName, force_ppm=True):
+def read_cr2(cr2FileName, force_ppm=True):
     """ 
     Read CR2 raw image.
     
-    Read a CR2 image and return data.
-
     Parameters
     ----------
     cr2FileName : string
