@@ -17,16 +17,16 @@
 ### BUT, there's nothing to worry about usage, laws etc.
 ### Enjoy.
 
-sourceweb = "http://github.com/eaydin/cr2fits"
+sourceweb = "http://github.com/lsiemens/cr2fits"
 version = "1.0.3"
 
 try :    
     from copy import deepcopy
-    import numpy, pyfits, subprocess, sys, os, re, datetime, math
+    import numpy, subprocess, sys, os, re, datetime, math
 
 except :
     print("ERROR : Missing some libraries!")
-    print("Check if you have the following :\n\tnumpy\n\tpyfits\n\tdcraw")
+    print("Check if you have the following :\n\tnumpy\n\tdcraw")
     print("For details : %s" % sourceweb)
     raise SystemExit
 
@@ -256,21 +256,16 @@ if sys.version_info[0] > 2:
 
 ### CR2FITS SOURCE CODE ###
 
-def read_CR2(cr2FileName, colorInput, force_ppm=True):
+def read_CR2(cr2FileName, force_ppm=True):
     """ 
     Read CR2 raw image.
     
-    Read a CR2 image and save the data in a pyfits HDU object.
+    Read a CR2 image and return data.
 
     Parameters
     ----------
     cr2FileName : string
         The name of the CR2 file.
-    colorInput : integer
-        The color channel to extract from the image.
-        
-        Select 0 for the Red channel, 1 for the Green channel, 
-        2 for the Blue channel or 3 for Raw.
     force_ppm : boolean, optional
         Force an update of the ppm/pgm file.  If force_ppm is False
         and a ppm/pgm version of the file cr2FileName already exists,
@@ -279,30 +274,26 @@ def read_CR2(cr2FileName, colorInput, force_ppm=True):
     
     Returns
     -------
-    HDU
-        A pyfits HDU object containing the data from the file cr2FileName is returned.       
+    Array
+        A numpy array containing the data from the file cr2FileName is returned.       
 
     """
-    colors = {0:"Red",1:"Green",2:"Blue",3:"Raw"}
-    colorState = any([True for i in colors.keys() if i == colorInput])
-
-    if colorState == False :
-        print("ERROR : Color value can be set as 0:Red, 1:Green, 2:Blue, 3:Raw.")
-        raise SystemExit    
-
-    if (os.path.isfile(cr2FileName.split('.')[0] + '.pgm') or os.path.isfile(cr2FileName.split('.')[0] + '.ppm')) and not force_ppm:
-        #assume if a ppm/pgm file exists it is uptodate
-        pass
+    tmp_name = cr2FileName.rsplit('.', 1)
+    if (len(tmp_name)==1):
+        ppm_name = tmp_name[0] + '.ppm'
     else:
+        if (tmp_name[1][0]!='/'):
+            ppm_name = tmp_name[0] + '.ppm'
+        else:
+            ppm_name = cr2FileName + '.ppm'
+
+    if (not os.path.isfile(ppm_name)) or force_ppm:
         print("Reading file %s...") % cr2FileName
         try:
-            #Converting the CR2 to PPM
-            if colorInput == 3:
-                p = subprocess.Popen(["dcraw","-D","-4",cr2FileName]).communicate()[0]
-            else:
-                p = subprocess.Popen(["dcraw","-6",cr2FileName]).communicate()[0]
+            #Converting the CR2 to PPM/PGM with dcraw
+            p = subprocess.Popen(["dcraw","-6",cr2FileName]).communicate()[0]
 
-            #Getting the EXIF of CR2 with dcraw
+            #Getting the metadata of CR2 with dcraw
             p = subprocess.Popen(["dcraw","-i","-v",cr2FileName],stdout=subprocess.PIPE)
             cr2header = p.communicate()[0]
 
@@ -344,86 +335,10 @@ def read_CR2(cr2FileName, colorInput, force_ppm=True):
     print("Reading the PPM output...")
     try :
         #Reading the PPM
-        if colorInput == 3:
-            ppm_name = cr2FileName.split('.')[0] + '.pgm'
-        else:
-            ppm_name = cr2FileName.split('.')[0] + '.ppm'
         im_ppm = NetpbmFile(ppm_name).asarray()
-    except :
+    except ValueError:
         print("ERROR : Something went wrong while reading the PPM file.")
         raise SystemExit
 
-    print("Extracting %s color channels... (may take a while)" % colors[colorInput]) 
-    try :
-        if colorInput != 3:
-            #Extracting the Green Channel Only
-            im_green = numpy.zeros((im_ppm.shape[0],im_ppm.shape[1]),dtype=numpy.uint16)
-            for row in xrange(0,im_ppm.shape[0]) :
-                for col in xrange(0,im_ppm.shape[1]) :
-                    im_green[row,col] = im_ppm[row,col][colorInput]
-    except :
-        print("ERROR : Something went wrong while extracting color channels.")
-        raise SystemExit
-
-    print("Creating the FITS file...")
-    try :
-    #Creating the FITS File
-        if colorInput == 3:
-            hdu = pyfits.PrimaryHDU(im_ppm)
-        else:
-            hdu = pyfits.PrimaryHDU(im_green)
-        try:
-            hdu.header.update('OBSTIME',date)
-            hdu.header.update('EXPTIME',shutter)
-            hdu.header.update('APERTUR',aperture)
-            hdu.header.update('ISO',iso)
-            hdu.header.update('FOCAL',focal)
-            hdu.header.update('ORIGIN',original_file)
-            hdu.header.update('FILTER',colors[colorInput])
-            hdu.header.update('CAMERA',camera)
-        except UnboundLocalError:
-            print "Warning: no meta data loaded."
-        hdu.header.add_comment('FITS File Created with cr2fits.py available at %s'%(sourceweb))
-        hdu.header.add_comment('cr2fits.py version %s'%(version))
-        hdu.header.add_comment('EXPTIME is in seconds.')
-        hdu.header.add_comment('APERTUR is the ratio as in f/APERTUR')
-        hdu.header.add_comment('FOCAL is in mm')    
-    except TypeError:
-        print("ERROR : Something went wrong while creating the FITS file.")
-        raise SystemExit
-    return hdu
-
-if __name__ == '__main__':
-    #command line interface
-    try :
-        cr2FileName = sys.argv[1]
-        colorInput = int(sys.argv[2]) # 0=R 1=G 2=B 3=raw
-    except :
-        print("ERROR : You probably don't know how to use it?")
-        print("./cr2fits.py <cr2filename> <color-index>")
-        print("The <color-index> can take 4 values:0,1,2 for R,G,B respectively, or 3 for completely raw.")
-        print("Example :\n\t$ ./cr2fits.py myimage.cr2 1")
-        print("The above example will create 2 outputs.")
-        print("\tmyimage.ppm : The PPM, which you can delete.")
-        print("\tmyimage-G.fits : The FITS image in the Green channel, which is the purpose!")
-        print("For details : http://github.com/eaydin/cr2fits")
-        print("Version : %s" % version) 
-        raise SystemExit
-
-    hdu = read_CR2(cr2FileName, colorInput)
-
-    print("Writing the FITS file...")
-    try :
-        if colorInput == 3:
-            tag = 'raw'
-        else:
-            colors = {0:"Red",1:"Green",2:"Blue",3:"Raw"}
-            tag = colors[colorInput][0]
-
-        hdu.writeto(cr2FileName.split('.')[0]+"-"+tag+'.fits')
-    except:
-        print("ERROR : Something went wrong while writing the FITS file. Maybe it already exists?")
-        raise SystemExit
-
-        print("Conversion successful!")
-
+    #shutter/EXPTIME is in seconds: APERTUR is the ratio as in f/APERTUR: FOCAL is in mm
+    return im_ppm, (date, shutter, aperture, iso, focal, original_file, camera)
