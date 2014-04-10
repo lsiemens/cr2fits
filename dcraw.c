@@ -22,7 +22,7 @@
    $Date: 2014/01/31 04:05:31 $
 
    modified by Luke Siemens: April 4, 2014.
-   All RESTRICTED function removed.
+   All RESTRICTED functions removed.
  */
 
 #define DCRAW_VERSION "9.20.1"
